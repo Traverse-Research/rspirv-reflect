@@ -12,7 +12,7 @@ use thiserror::Error;
 pub use rspirv;
 pub use rspirv::spirv;
 
-pub struct Reflection(Module);
+pub struct Reflection(pub Module);
 
 #[derive(Error, Debug)]
 pub enum ReflectError {
@@ -74,7 +74,7 @@ impl DescriptorType {
 /// they're mirrored here to prevent a dependency on ash
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct ShaderStageFlags(u32);
+pub struct ShaderStageFlags(pub u32);
 
 impl Default for ShaderStageFlags {
     fn default() -> Self {
