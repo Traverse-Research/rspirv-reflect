@@ -4,6 +4,8 @@
 [![LICENSE](https://img.shields.io/badge/license-apache-blue.svg)](LICENSE-APACHE)
 [![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4%20adopted-ff69b4.svg)](../master/CODE_OF_CONDUCT.md)
 
+![Banner](banner.png)
+
 This is a minimal dependency, SPIR-V reflection library written in rust. It uses the [https://github.com/gfx-rs/rspirv/](rspirv) crate as it's basis.
 
 
