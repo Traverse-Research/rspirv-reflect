@@ -1,5 +1,6 @@
 # 🌋 rspirv-reflect
 
+[![Actions Status](https://github.com/Traverse-Research/rspirv-reflect/workflows/Continuous%20integration/badge.svg)](https://github.com/Traverse-Research/rspirv-reflect/actions)
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![LICENSE](https://img.shields.io/badge/license-apache-blue.svg)](LICENSE-APACHE)
 [![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v1.4%20adopted-ff69b4.svg)](../master/CODE_OF_CONDUCT.md)
