@@ -1,5 +1,5 @@
 //! Basic SPIR-V refletion library to extract binding information
-//! 
+//!
 //! ```rustc
 //! let info = Reflection::new_from_spirv(&spirv_blob)?;
 //! dbg!(info.get_descriptor_sets()?);
@@ -47,7 +47,7 @@ pub enum ReflectError {
 
 type Result<V, E = ReflectError> = ::std::result::Result<V, E>;
 
-/// These are bit-exact with ash and the Vulkan specification, 
+/// These are bit-exact with ash and the Vulkan specification,
 /// they're mirrored here to prevent a dependency on ash
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -70,7 +70,7 @@ impl DescriptorType {
     pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_165_000);
 }
 
-/// These are bit-exact with ash and the Vulkan specification, 
+/// These are bit-exact with ash and the Vulkan specification,
 /// they're mirrored here to prevent a dependency on ash
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
