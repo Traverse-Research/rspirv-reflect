@@ -70,43 +70,10 @@ impl DescriptorType {
     pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_165_000);
 }
 
-/// These are bit-exact with ash and the Vulkan specification,
-/// they're mirrored here to prevent a dependency on ash
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct ShaderStageFlags(pub u32);
-
-impl Default for ShaderStageFlags {
-    fn default() -> Self {
-        Self(0)
-    }
-}
-
-impl ShaderStageFlags {
-    pub const VERTEX: Self = Self(0b1);
-    pub const TESSELLATION_CONTROL: Self = Self(0b10);
-    pub const TESSELLATION_EVALUATION: Self = Self(0b100);
-    pub const GEOMETRY: Self = Self(0b1000);
-    pub const FRAGMENT: Self = Self(0b1_0000);
-    pub const COMPUTE: Self = Self(0b10_0000);
-    pub const ALL_GRAPHICS: Self = Self(0x0000_001F);
-
-    pub const RAYGEN_KHR: Self = Self(0b1_0000_0000);
-    pub const ANY_HIT_KHR: Self = Self(0b10_0000_0000);
-    pub const CLOSEST_HIT_KHR: Self = Self(0b100_0000_0000);
-    pub const MISS_KHR: Self = Self(0b1000_0000_0000);
-    pub const INTERSECTION_KHR: Self = Self(0b1_0000_0000_0000);
-    pub const CALLABLE_KHR: Self = Self(0b10_0000_0000_0000);
-
-    pub const TASK_NV: Self = Self(0b100_0000);
-    pub const MESH_NV: Self = Self(0b1000_0000);
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DescriptorInfo {
     pub ty: DescriptorType,
     pub is_bindless: bool,
-    pub stages: ShaderStageFlags,
     pub name: String,
 }
 
@@ -321,7 +288,6 @@ impl Reflection {
         Ok(DescriptorInfo {
             ty: descriptor_type,
             is_bindless: false,
-            stages: ShaderStageFlags::default(),
             name: "".to_string(),
         })
     }
