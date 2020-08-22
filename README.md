@@ -1,5 +1,7 @@
 # 🌋 rspirv-reflect
 
+[![Latest version](https://img.shields.io/crates/v/rspirv-reflect.svg)](https://crates.io/crates/rspirv-reflect)
+[![Documentation](https://docs.rs/rspirv-reflect/badge.svg)](https://docs.rs/rspirv-reflect)
 [![Actions Status](https://github.com/Traverse-Research/rspirv-reflect/workflows/Continuous%20integration/badge.svg)](https://github.com/Traverse-Research/rspirv-reflect/actions)
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![LICENSE](https://img.shields.io/badge/license-apache-blue.svg)](LICENSE-APACHE)
@@ -7,7 +9,7 @@
 
 [![Banner](banner.png)](https://traverseresearch.nl)
 
-This is a minimal dependency, SPIR-V reflection library written in rust. It uses the [rspirv](https://github.com/gfx-rs/rspirv/) crate as it's basis.
+This is a minimal dependency, SPIR-V reflection library written in rust. It uses the [rspirv](https://github.com/gfx-rs/rspirv/) crate as it's basis. As of writing it supports SPIR-V up to and including version 1.5.
 
 ```toml
 [dependencies]
