@@ -1,4 +1,4 @@
-//! Basic SPIR-V refletion library to extract binding information
+//! Basic SPIR-V reflection library to extract binding information
 //!
 //! ```rustc
 //! let info = Reflection::new_from_spirv(&spirv_blob)?;
