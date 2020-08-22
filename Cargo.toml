@@ -1,14 +1,17 @@
 [package]
 name = "rspirv-reflect"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple descriptor reflection library for SPIR-V"
 authors = ["Traverse Research <support@traverseresearch.nl>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["rendering"]
-categories = ["api-bindings", "spirv"]
+categories = ["api-bindings", "rendering"]
+homepage = "https://traverseresearch.nl"
+repository = "https://github.com/Traverse-Research/rspirv-reflect"
+documentation = "https://docs.rs/rspirv-reflect"
 
 [dependencies]
-rspirv = { git = "https://github.com/gfx-rs/rspirv.git", rev = "5bf0faa2e02c1116385a16c70ef2594c93d2bf83" }
+rspirv = "0.7"
 thiserror = "1.0"

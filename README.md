@@ -9,6 +9,10 @@
 
 This is a minimal dependency, SPIR-V reflection library written in rust. It uses the [https://github.com/gfx-rs/rspirv/](rspirv) crate as it's basis.
 
+```toml
+[dependencies]
+rspirv-reflect = "0.1"
+```
 
 ## License
 
