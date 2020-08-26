@@ -1,0 +1,53 @@
+#version 430
+#extension GL_ARB_compute_shader : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout(set = 0, binding = 0) uniform UniformBlock
+{
+    float g_input[];
+    int nonuniform_index;
+}
+uniformBlock;
+
+layout(set = 1, binding = 0, rgba32f) uniform readonly image2D g_rimage2d;
+layout(set = 1, binding = 1, rgba32f) uniform writeonly image2D g_wimage2d;
+layout(set = 1, binding = 2, rgba32f) uniform image2D g_rwimage2d;
+
+layout(set = 2, binding = 0) uniform texture2D g_texture2d;
+
+layout(set = 3, binding = 0, rgba32f) uniform image2D g_multiple_rwimage2d[10];
+layout(set = 3, binding = 1) uniform texture2D g_multiple_texture2d[10];
+
+// WARNING: This becomes size 6, because the highest used uniform index is 5 below
+layout(set = 4, binding = 0, rgba32f) uniform image2D g_bindless_rwimage2d[];
+// WARNING: texture() function can only be used on sampler2D. texture2D type appears to be
+// unreferenced in upstream docs but is the only way to get SAMPLED_IMAGE?
+layout(set = 4, binding = 1) uniform texture2D g_bindless_texture2d[];
+layout(set = 4, binding = 2) uniform BindlessBufferBlockName
+{
+    float x;
+}
+// WARNING: This becomes size 11, because the highest used uniform index is 10 below
+g_bindless_buffer[];
+
+layout(set = 5, binding = 0) uniform sampler2D g_samplerimage2d;
+
+layout(set = 6, binding = 0, rgba32f) uniform imageBuffer g_imagebuffer;
+layout(set = 6, binding = 1) uniform samplerBuffer g_samplerbuffer;
+
+layout(set = 6, binding = 2) buffer NamedStorageBuffer
+{
+    float data[];
+}
+g_storageBuffer[];
+
+layout(set = 6, binding = 3) buffer BufferBlock
+{
+    float g_unnamedStorageBuffer[];
+}
+bufferBlock;
+
+void main()
+{
+    float x = imageLoad(g_bindless_rwimage2d[5], ivec2(10, 20)).x + g_bindless_buffer[10].x + uniformBlock.g_input[0] + bufferBlock.g_unnamedStorageBuffer[0] + g_storageBuffer[uniformBlock.nonuniform_index].data[0];
+}

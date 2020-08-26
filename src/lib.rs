@@ -500,11 +500,11 @@ impl Reflection {
 
                 if let Some(name) = names.get(&var_id) {
                     // TODO: Might do this way earlier
-                    if name.eq(&"$Globals") {
+                    if name == "$Globals" {
                         return Err(ReflectError::BindingGlobalParameterBuffer);
                     }
 
-                    descriptor_info.name = (*name).clone();
+                    descriptor_info.name = name.to_owned();
                 }
 
                 let inserted = current_set.insert(binding, descriptor_info);
