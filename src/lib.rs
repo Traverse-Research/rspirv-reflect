@@ -1,9 +1,11 @@
 //! Basic SPIR-V reflection library to extract binding information
 //!
-//! ```rustc
-//! let info = Reflection::new_from_spirv(&spirv_blob)?;
-//! dbg!(info.get_descriptor_sets()?);
+//! ```no_run
+//! # let spirv_blob: &[u8] = todo!();
+//! let info = rspirv_reflect::Reflection::new_from_spirv(&spirv_blob).expect("Invalid SPIR-V");
+//! dbg!(info.get_descriptor_sets().expect("Failed to extract descriptor bindings"));
 //! ```
+
 use rspirv::binary::Parser;
 use rspirv::dr::{Instruction, Loader, Module, Operand};
 use std::collections::BTreeMap;
