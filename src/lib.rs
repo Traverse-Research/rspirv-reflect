@@ -335,20 +335,23 @@ impl Reflection {
                     Reflection::find_annotations_for_id(&reflect.annotations, var_id)?;
 
                 // TODO: Can also define these as mut
-                let (set, binding) = annotations.iter().fold((None, None), |state, a| {
-                    if let Operand::Decoration(d) = a.operands[1] {
-                        if let Operand::LiteralInt32(i) = a.operands[2] {
-                            if d == spirv::Decoration::DescriptorSet {
-                                assert!(state.0.is_none(), "Set already has a value!");
-                                return (Some(i), state.1);
-                            } else if d == spirv::Decoration::Binding {
-                                assert!(state.1.is_none(), "Binding already has a value!");
-                                return (state.0, Some(i));
+                let (set, binding) = annotations.iter().filter(|a| a.operands.len() >= 3).fold(
+                    (None, None),
+                    |state, a| {
+                        if let Operand::Decoration(d) = a.operands[1] {
+                            if let Operand::LiteralInt32(i) = a.operands[2] {
+                                if d == spirv::Decoration::DescriptorSet {
+                                    assert!(state.0.is_none(), "Set already has a value!");
+                                    return (Some(i), state.1);
+                                } else if d == spirv::Decoration::Binding {
+                                    assert!(state.1.is_none(), "Binding already has a value!");
+                                    return (state.0, Some(i));
+                                }
                             }
                         }
-                    }
-                    state
-                });
+                        state
+                    },
+                );
 
                 let set = set.ok_or_else(|| ReflectError::MissingSetDecoration(var.clone()))?;
                 let binding =
