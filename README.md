@@ -16,7 +16,7 @@ This is a minimal dependency, SPIR-V reflection library written in rust. It uses
 rspirv-reflect = "0.1"
 ```
 
-## License
+### License
 
 Licensed under either of
 
@@ -24,6 +24,12 @@ Licensed under either of
 * MIT license ([LICENSE-MIT](../master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
+
+### Alternative libraries
+
+ * [SPIR-Q](https://github.com/PENGUINLIONG/spirq-rs)
+ * [spirv-reflect-rs](https://github.com/gwihlidal/spirv-reflect-rs)
+ * [spirv_cross](https://github.com/grovesNL/spirv_cross) 
 
 ### Contribution
 
