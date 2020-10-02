@@ -105,7 +105,7 @@ impl Reflection {
         Self(module)
     }
 
-    pub fn new_from_spirv(code: &[u8]) -> Result<Self, ReflectError> {
+    pub fn new_from_spirv(code: &[u8]) -> Result<Self> {
         Ok(Self::new({
             let mut loader = Loader::new();
             let p = Parser::new(code, &mut loader);
@@ -322,7 +322,7 @@ impl Reflection {
             .debugs
             .iter()
             .filter(|i| i.class.opcode == spirv::Op::Name)
-            .map(|i| -> Result<(u32, String), ReflectError> {
+            .map(|i| -> Result<(u32, String)> {
                 let element_type_id = get_operand_at!(i, Operand::IdRef, 0)?;
                 let name = get_ref_operand_at!(i, Operand::LiteralString, 1)?;
                 Ok((element_type_id, name.clone()))
