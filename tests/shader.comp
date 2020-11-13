@@ -1,0 +1,52 @@
+#version 420
+#extension GL_ARB_compute_shader : enable
+
+struct TestType {
+    vec4 asdf;
+};
+
+// uniform vec3 oneUniform;
+// uniform TheStruct aUniformOfArrayType;
+// uniform mat4 matrixArrayUniform[25];
+// uniform TestType uniformArrayOfStructs[10];
+
+// layout(set = 0, binding = 0) uniform Output
+// {
+//     uint g_output;
+// };
+
+// layout(set = 0, binding = 0) uniform BlockType
+// {
+//     TestType my_type;
+// };
+
+// layout (local_size_x = 32) in;
+
+layout(set = 0, binding = 0) uniform inputBuffer
+{
+    float g_input[];
+};
+
+layout(set = 0, binding = 1) uniform outputBuffer
+{
+    float g_output[];
+};
+
+layout(set = 2, binding = 0, rgba32f) uniform readonly image2D g_rimage2d;
+layout(set = 2, binding = 1, rgba32f) uniform writeonly image2D g_wimage2d;
+layout(set = 2, binding = 2, rgba32f) uniform image2D g_rwimage2d;
+
+layout(set = 3, binding = 0) uniform texture2D g_texture2d;
+
+layout(set = 4, binding = 0, rgba32f) uniform image2D g_bindlessrwimage2d[];
+layout(set = 4, binding = 1) uniform texture2D g_bindlesstexture2d[];
+
+layout(set = 5, binding = 0) uniform sampler2D g_samplerimage2d;
+
+layout(set = 6, binding = 0, rgba32f) uniform imageBuffer g_imagebuffer;
+layout(set = 6, binding = 1) uniform samplerBuffer g_samplerbuffer;
+
+void main()
+{
+    // g_output[0] = g_input[0];
+}
