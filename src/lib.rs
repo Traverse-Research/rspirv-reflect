@@ -43,6 +43,8 @@ pub enum ReflectError {
     MissingHeader,
     #[error("Accidentally binding global parameter buffer. Global variables are currently not supported in HLSL")]
     BindingGlobalParameterBuffer,
+    #[error("Only one push constant block can be defined per shader entry")]
+    TooManyPushConstants,
     #[error("SPIR-V parse error")]
     ParseError(#[from] rspirv::binary::ParseState),
 }
@@ -67,6 +69,7 @@ impl DescriptorType {
     pub const UNIFORM_BUFFER_DYNAMIC: Self = Self(8);
     pub const STORAGE_BUFFER_DYNAMIC: Self = Self(9);
     pub const INPUT_ATTACHMENT: Self = Self(10);
+    pub const PUSH_CONSTANT: Self = Self(11);
 
     pub const INLINE_UNIFORM_BLOCK_EXT: Self = Self(1_000_138_000);
     pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_165_000);
@@ -77,6 +80,11 @@ pub struct DescriptorInfo {
     pub ty: DescriptorType,
     pub is_bindless: bool,
     pub name: String,
+}
+
+pub struct PushConstantInfo {
+    pub offset: u32,
+    pub size: u32,
 }
 
 macro_rules! get_ref_operand_at {
@@ -167,7 +175,6 @@ impl Reflection {
         let annotations = type_instruction.result_id.map_or(Ok(vec![]), |result_id| {
             Reflection::find_annotations_for_id(&self.0.annotations, result_id)
         })?;
-
         // Weave with recursive types
         match type_instruction.class.opcode {
             spirv::Op::TypeRuntimeArray => {
@@ -297,6 +304,137 @@ impl Reflection {
             is_bindless: false,
             name: "".to_string(),
         })
+    }
+
+    // todo hannes, merge with master for OperandIndexError
+    // todo hannes, make separate function to obtain the byte size
+    // todo hannes, implement proper error handling everywhere
+    // todo hannes, remove println!s
+    pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
+        let reflect = &self.0;
+        let push_constants = reflect
+            .types_global_values
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::Variable)
+            .filter_map(|i| {
+                let cls = get_operand_at!(*i, Operand::StorageClass, 0);
+                match cls {
+                    Ok(cls) if cls == spirv::StorageClass::PushConstant => Some(Ok(i)),
+                    Err(err) => Some(Err(err)),
+                    _ => None,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if push_constants.len() > 1 {
+            return Err(ReflectError::TooManyPushConstants);
+        } else if push_constants.is_empty() {
+            return Ok(None);
+        }
+
+        let push_constant = if let Some(push_constant) = push_constants.first() {
+            match push_constant {
+                Ok(push_constant) => push_constant,
+                Err(err) => return Err(todo!("no storage class?")),
+            }
+        } else {
+            return Ok(None);
+        };
+
+        let result_id = if let Some(result_id) = push_constant.result_id {
+            result_id
+        } else {
+            return Err(todo!("no result id"));
+        };
+
+        // get variable identifier to access the correct annotations
+        let varible_ids: Vec<Result<u32, ReflectError>> = reflect
+            .debugs
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::Name)
+            .map(|i| Ok(get_operand_at!(i, Operand::IdRef, 0)?))
+            .collect::<Vec<_>>();
+
+        println!("{:?}", varible_ids);
+
+        //if this is false the id doesn't exist
+        let variable_id: &Result<u32, ReflectError> =
+            if let Some(var_id) = varible_ids.get(result_id as usize) {
+                var_id
+            } else {
+                //todo hannes, this should be an error for when the id doesn't exist
+                return Ok(None);
+            };
+
+        // return if an error is stored
+        // todo hannes, properly return the error
+        let variable_id = match variable_id {
+            Ok(id) => *id,
+            Err(err) => return Err(todo!()),
+        };
+
+        let instruction =
+            Reflection::find_assignment_for(&reflect.types_global_values, variable_id)?;
+
+        // resolve type if the type instruction is a pointer
+        let instruction = if instruction.class.opcode == spirv::Op::TypePointer {
+            let ptr_storage_class = get_operand_at!(instruction, Operand::StorageClass, 0)?;
+            assert_eq!(spirv::StorageClass::PushConstant, ptr_storage_class);
+            let element_type_id = get_operand_at!(instruction, Operand::IdRef, 1)?;
+            Reflection::find_assignment_for(&reflect.types_global_values, element_type_id)?
+        } else {
+            instruction
+        };
+
+        println!("{:?}", instruction);
+
+        let annotations =
+            Self::find_annotations_for_id(&reflect.annotations, instruction.result_id.unwrap())
+                .unwrap();
+
+        let last_member_decorate = annotations
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
+            .filter(|i| {
+                i.operands.iter().any(|o| match &o {
+                    Operand::Decoration(d) => match &d {
+                        spirv::Decoration::Offset => true,
+                        _ => false,
+                    },
+                    _ => false,
+                })
+            })
+            .last();
+
+        let byte_size = if let Some(member_decorate) = last_member_decorate {
+            let mut offset_operand_index = 0usize;
+            for (idx, operand) in member_decorate.operands.iter().enumerate() {
+                match operand {
+                    Operand::Decoration(d) if *d == spirv::Decoration::Offset => {
+                        offset_operand_index = idx + 1;
+                        break;
+                    }
+                    _ => continue,
+                }
+            }
+
+            // assert if out of range, then the value of Decoration Offset is missing, which should never happen
+            debug_assert!(offset_operand_index < member_decorate.operands.len());
+            let byte_offset = match member_decorate.operands[offset_operand_index] {
+                Operand::LiteralInt32(byte_offset) => byte_offset,
+                _ => panic!("This value should always be stored in a LiteralInt32"),
+            };
+
+            println!("Tadaaa! byte offset to last variable = {:?}", byte_offset);
+        } else {
+            // no offset decorate found, error?
+            return Ok(None);
+        };
+
+        Ok(Some(PushConstantInfo {
+            size: 12,
+            offset: 0,
+        }))
     }
 
     /// Return a nested HashMap, the first HashMap is key'd off of the descriptor set,
