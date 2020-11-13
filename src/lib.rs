@@ -25,6 +25,8 @@ pub enum ReflectError {
     MissingSetDecoration(Instruction),
     #[error("Expecting operand {1} in position {2} for instruction {0:?}")]
     OperandError(Instruction, &'static str, usize),
+    #[error("Expecting operand {1} in position {2} but instruction {0:?} has only {3} operands")]
+    OperandIndexError(Instruction, &'static str, usize, usize),
     #[error("OpVariable {0:?} lacks a return type")]
     VariableWithoutReturnType(Instruction),
     #[error("Unknown storage class {0:?}")]
@@ -80,7 +82,14 @@ pub struct DescriptorInfo {
 macro_rules! get_ref_operand_at {
     // TODO: Can't we have a match arm that deals with `ops` containing `&instruction.operands`?
     ($instr:expr, $op:path, $idx:expr) => {
-        if let $op(val) = &$instr.operands[$idx] {
+        if $idx >= $instr.operands.len() {
+            Err(ReflectError::OperandIndexError(
+                $instr.clone(),
+                stringify!($op),
+                $idx,
+                $instr.operands.len(),
+            ))
+        } else if let $op(val) = &$instr.operands[$idx] {
             Ok(val)
         } else {
             Err(ReflectError::OperandError(
@@ -94,9 +103,7 @@ macro_rules! get_ref_operand_at {
 
 macro_rules! get_operand_at {
     ($ops:expr, $op:path, $idx:expr) => {
-        get_ref_operand_at!($ops, $op, $idx)
-            // Nightly: .as_deref()
-            .map(|v| *v)
+        get_ref_operand_at!($ops, $op, $idx).map(|v| *v)
     };
 }
 
