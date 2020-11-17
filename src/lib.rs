@@ -350,7 +350,6 @@ impl Reflection {
 
         // return the value from the last offset member decoration
         for i in member_decorates.iter().rev() {
-            debug_assert!(i.operands.len() == 4);
             let decoration = get_operand_at!(**i, Operand::Decoration, 2)?;
             if let spirv::Decoration::Offset = decoration {
                 return Ok(get_operand_at!(**i, Operand::LiteralInt32, 3)?);

@@ -104,3 +104,16 @@ fn hlsl_bindings() {
         }
     );
 }
+
+#[test]
+fn push_constants() {
+    let spirv = include_bytes!("push_constant_tests_ps-hlsl.spv");
+    let reflect = Reflection::new_from_spirv(spirv)
+        .expect("Failed to create reflection module from spirv code");
+    let range = reflect
+        .get_push_constant_range()
+        .expect("failed to extract push constants")
+        .expect("defined push constants not detected");
+
+    assert_eq!(range.size, 404);
+}
