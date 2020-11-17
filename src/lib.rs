@@ -37,6 +37,8 @@ pub enum ReflectError {
     ImageSampledFieldUnknown(Instruction, u32),
     #[error("Unhandled OpType instruction {0:?}")]
     UnhandledTypeInstruction(Instruction),
+    #[error("{0:?} does not generate a result")]
+    MissingResultId(Instruction),
     #[error("No instruction assigns to {0:?}")]
     UnassignedResultId(u32),
     #[error("rspirv reflect lacks module header")]
@@ -306,23 +308,68 @@ impl Reflection {
         })
     }
 
-    // todo hannes, use memberdeecorate of struct to find the offset to the last element
+    fn byte_offset_to_last_var(
+        reflect: &Module,
+        struct_instruction: &Instruction,
+    ) -> Result<u32, ReflectError> {
+        debug_assert!(struct_instruction.class.opcode == spirv::Op::TypeStruct);
+
+        // if there are less then two members there is no offset to use
+        if struct_instruction.operands.len() < 2 {
+            return Ok(0);
+        }
+
+        let result_id = match struct_instruction.result_id {
+            Some(id) => id,
+            None => return Err(ReflectError::MissingResultId(struct_instruction.clone())),
+        };
+
+        let variable = reflect
+            .debugs
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::Name)
+            .find_map(|i| {
+                if get_operand_at!(i, Operand::IdRef, 0).ok()? == result_id {
+                    Some(i)
+                } else {
+                    None
+                }
+            });
+
+        let variable = match variable {
+            Some(i) => i,
+            None => return Err(ReflectError::UnknownStruct(struct_instruction.clone())),
+        };
+
+        let idref = get_operand_at!(variable, Operand::IdRef, 0)?;
+        let annotations = Self::find_annotations_for_id(&reflect.annotations, idref)?;
+        let member_decorates = annotations
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
+            .collect::<Vec<_>>();
+
+        // return the value from the last offset member decoration
+        for i in member_decorates.iter().rev() {
+            debug_assert!(i.operands.len() == 4);
+            let decoration = get_operand_at!(**i, Operand::Decoration, 2)?;
+            if let spirv::Decoration::Offset = decoration {
+                return Ok(get_operand_at!(**i, Operand::LiteralInt32, 3)?);
+            }
+        }
+
+        Ok(0)
+    }
+
     fn calculate_variable_size_bytes(
         reflect: &Module,
         type_instruction: &Instruction,
     ) -> Result<u32, ReflectError> {
         match type_instruction.class.opcode {
-            spirv::Op::TypeBool => {
-                println!("TypeBool");
-                Ok(0)
-            }
             spirv::Op::TypeInt | spirv::Op::TypeFloat => {
-                println!("TypeIntFloat");
                 debug_assert!(!type_instruction.operands.is_empty());
                 Ok(get_operand_at!(type_instruction, Operand::LiteralInt32, 0)? / 8)
             }
             spirv::Op::TypeVector | spirv::Op::TypeMatrix => {
-                println!("TypeVectorMatrix");
                 debug_assert!(type_instruction.operands.len() == 2);
                 let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
                 let var_type_instruction =
@@ -335,7 +382,6 @@ impl Reflection {
                 Ok(type_size_bytes * type_constant_count)
             }
             spirv::Op::TypeArray => {
-                println!("TypeArray");
                 debug_assert!(type_instruction.operands.len() == 2);
                 let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
                 let var_type_instruction =
@@ -352,24 +398,24 @@ impl Reflection {
                 Ok(type_size_bytes * type_constant_count)
             }
             spirv::Op::TypeStruct => {
-                println!("TypeStruct");
-                let mut bytes = 0u32;
-                for idx in 0..type_instruction.operands.len() {
-                    let id_ref = get_operand_at!(type_instruction, Operand::IdRef, idx)?;
+                if !type_instruction.operands.is_empty() {
+                    let byte_offset = Self::byte_offset_to_last_var(reflect, type_instruction)?;
+                    let last_var_idx = type_instruction.operands.len() - 1;
+                    let id_ref = get_operand_at!(type_instruction, Operand::IdRef, last_var_idx)?;
                     let type_instruction =
                         Self::find_assignment_for(&reflect.types_global_values, id_ref)?;
-                    bytes += Self::calculate_variable_size_bytes(reflect, type_instruction)?
+                    Ok(byte_offset
+                        + Self::calculate_variable_size_bytes(reflect, type_instruction)?)
+                } else {
+                    Ok(0)
                 }
-                Ok(bytes)
             }
             _ => Ok(0),
         }
     }
 
     // todo hannes, merge with master for OperandIndexError
-    // todo hannes, make separate function to obtain the byte size
-    // todo hannes, implement proper error handling everywhere
-    // todo hannes, remove println!s
+    // todo hannes, write tests
     pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
         let reflect = &self.0;
 
@@ -389,23 +435,15 @@ impl Reflection {
 
         if push_constants.len() > 1 {
             return Err(ReflectError::TooManyPushConstants);
-        } else if push_constants.is_empty() {
-            return Ok(None);
         }
 
-        let push_constant = if let Some(push_constant) = push_constants.first() {
+        let push_constant = if let Some(push_constant) = push_constants.into_iter().next() {
             match push_constant {
                 Ok(push_constant) => push_constant,
-                Err(err) => return Err(todo!("no storage class?")),
+                Err(err) => return Err(err),
             }
         } else {
             return Ok(None);
-        };
-
-        let result_id = if let Some(result_id) = push_constant.result_id {
-            result_id
-        } else {
-            return Err(todo!("no result id"));
         };
 
         let instruction = Reflection::find_assignment_for(
@@ -423,11 +461,8 @@ impl Reflection {
             instruction
         };
 
-        println!("{:?}", instruction);
-
         let size_bytes = Self::calculate_variable_size_bytes(reflect, instruction)?;
 
-        dbg!(size_bytes);
         Ok(Some(PushConstantInfo {
             size: size_bytes,
             offset: 0,
