@@ -306,12 +306,73 @@ impl Reflection {
         })
     }
 
+    // todo hannes, use memberdeecorate of struct to find the offset to the last element
+    fn calculate_variable_size_bytes(
+        reflect: &Module,
+        type_instruction: &Instruction,
+    ) -> Result<u32, ReflectError> {
+        match type_instruction.class.opcode {
+            spirv::Op::TypeBool => {
+                println!("TypeBool");
+                Ok(0)
+            }
+            spirv::Op::TypeInt | spirv::Op::TypeFloat => {
+                println!("TypeIntFloat");
+                debug_assert!(!type_instruction.operands.is_empty());
+                Ok(get_operand_at!(type_instruction, Operand::LiteralInt32, 0)? / 8)
+            }
+            spirv::Op::TypeVector | spirv::Op::TypeMatrix => {
+                println!("TypeVectorMatrix");
+                debug_assert!(type_instruction.operands.len() == 2);
+                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
+                let var_type_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
+                let type_size_bytes =
+                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
+
+                let type_constant_count =
+                    get_operand_at!(type_instruction, Operand::LiteralInt32, 1)?;
+                Ok(type_size_bytes * type_constant_count)
+            }
+            spirv::Op::TypeArray => {
+                println!("TypeArray");
+                debug_assert!(type_instruction.operands.len() == 2);
+                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
+                let var_type_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
+                let type_size_bytes =
+                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
+
+                let var_constant_id = get_operand_at!(type_instruction, Operand::IdRef, 1)?;
+                let constant_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, var_constant_id)?;
+                let type_constant_count =
+                    get_operand_at!(constant_instruction, Operand::LiteralInt32, 0)?;
+
+                Ok(type_size_bytes * type_constant_count)
+            }
+            spirv::Op::TypeStruct => {
+                println!("TypeStruct");
+                let mut bytes = 0u32;
+                for idx in 0..type_instruction.operands.len() {
+                    let id_ref = get_operand_at!(type_instruction, Operand::IdRef, idx)?;
+                    let type_instruction =
+                        Self::find_assignment_for(&reflect.types_global_values, id_ref)?;
+                    bytes += Self::calculate_variable_size_bytes(reflect, type_instruction)?
+                }
+                Ok(bytes)
+            }
+            _ => Ok(0),
+        }
+    }
+
     // todo hannes, merge with master for OperandIndexError
     // todo hannes, make separate function to obtain the byte size
     // todo hannes, implement proper error handling everywhere
     // todo hannes, remove println!s
     pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
         let reflect = &self.0;
+
         let push_constants = reflect
             .types_global_values
             .iter()
@@ -347,34 +408,10 @@ impl Reflection {
             return Err(todo!("no result id"));
         };
 
-        // get variable identifier to access the correct annotations
-        let varible_ids: Vec<Result<u32, ReflectError>> = reflect
-            .debugs
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::Name)
-            .map(|i| Ok(get_operand_at!(i, Operand::IdRef, 0)?))
-            .collect::<Vec<_>>();
-
-        println!("{:?}", varible_ids);
-
-        //if this is false the id doesn't exist
-        let variable_id: &Result<u32, ReflectError> =
-            if let Some(var_id) = varible_ids.get(result_id as usize) {
-                var_id
-            } else {
-                //todo hannes, this should be an error for when the id doesn't exist
-                return Ok(None);
-            };
-
-        // return if an error is stored
-        // todo hannes, properly return the error
-        let variable_id = match variable_id {
-            Ok(id) => *id,
-            Err(err) => return Err(todo!()),
-        };
-
-        let instruction =
-            Reflection::find_assignment_for(&reflect.types_global_values, variable_id)?;
+        let instruction = Reflection::find_assignment_for(
+            &reflect.types_global_values,
+            push_constant.result_type.unwrap(),
+        )?;
 
         // resolve type if the type instruction is a pointer
         let instruction = if instruction.class.opcode == spirv::Op::TypePointer {
@@ -388,51 +425,11 @@ impl Reflection {
 
         println!("{:?}", instruction);
 
-        let annotations =
-            Self::find_annotations_for_id(&reflect.annotations, instruction.result_id.unwrap())
-                .unwrap();
+        let size_bytes = Self::calculate_variable_size_bytes(reflect, instruction)?;
 
-        let last_member_decorate = annotations
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
-            .filter(|i| {
-                i.operands.iter().any(|o| match &o {
-                    Operand::Decoration(d) => match &d {
-                        spirv::Decoration::Offset => true,
-                        _ => false,
-                    },
-                    _ => false,
-                })
-            })
-            .last();
-
-        let byte_size = if let Some(member_decorate) = last_member_decorate {
-            let mut offset_operand_index = 0usize;
-            for (idx, operand) in member_decorate.operands.iter().enumerate() {
-                match operand {
-                    Operand::Decoration(d) if *d == spirv::Decoration::Offset => {
-                        offset_operand_index = idx + 1;
-                        break;
-                    }
-                    _ => continue,
-                }
-            }
-
-            // assert if out of range, then the value of Decoration Offset is missing, which should never happen
-            debug_assert!(offset_operand_index < member_decorate.operands.len());
-            let byte_offset = match member_decorate.operands[offset_operand_index] {
-                Operand::LiteralInt32(byte_offset) => byte_offset,
-                _ => panic!("This value should always be stored in a LiteralInt32"),
-            };
-
-            println!("Tadaaa! byte offset to last variable = {:?}", byte_offset);
-        } else {
-            // no offset decorate found, error?
-            return Ok(None);
-        };
-
+        dbg!(size_bytes);
         Ok(Some(PushConstantInfo {
-            size: 12,
+            size: size_bytes,
             offset: 0,
         }))
     }
