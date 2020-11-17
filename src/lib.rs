@@ -413,8 +413,6 @@ impl Reflection {
         }
     }
 
-    // todo hannes, merge with master for OperandIndexError
-    // todo hannes, write tests
     pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
         let reflect = &self.0;
 
