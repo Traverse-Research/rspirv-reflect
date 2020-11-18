@@ -419,21 +419,7 @@ impl Reflection {
             .result_id
             .ok_or_else(|| ReflectError::MissingResultId(struct_instruction.clone()))?;
 
-        let variable_id = reflect
-            .debugs
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::Name)
-            .find_map(|i| {
-                let id = get_operand_at!(i, Operand::IdRef, 0).ok()?;
-                if id == result_id {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .ok_or_else(|| ReflectError::UnknownStruct(struct_instruction.clone()))?;
-
-        let annotations = Self::find_annotations_for_id(&reflect.annotations, variable_id)?;
+        let annotations = Self::find_annotations_for_id(&reflect.annotations, result_id)?;
         let member_decorates = annotations
             .iter()
             .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
