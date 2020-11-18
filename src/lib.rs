@@ -71,7 +71,6 @@ impl DescriptorType {
     pub const UNIFORM_BUFFER_DYNAMIC: Self = Self(8);
     pub const STORAGE_BUFFER_DYNAMIC: Self = Self(9);
     pub const INPUT_ATTACHMENT: Self = Self(10);
-    pub const PUSH_CONSTANT: Self = Self(11);
 
     pub const INLINE_UNIFORM_BLOCK_EXT: Self = Self(1_000_138_000);
     pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_165_000);
@@ -177,6 +176,7 @@ impl Reflection {
         let annotations = type_instruction.result_id.map_or(Ok(vec![]), |result_id| {
             Reflection::find_annotations_for_id(&self.0.annotations, result_id)
         })?;
+
         // Weave with recursive types
         match type_instruction.class.opcode {
             spirv::Op::TypeRuntimeArray => {
@@ -308,164 +308,6 @@ impl Reflection {
         })
     }
 
-    fn byte_offset_to_last_var(
-        reflect: &Module,
-        struct_instruction: &Instruction,
-    ) -> Result<u32, ReflectError> {
-        debug_assert!(struct_instruction.class.opcode == spirv::Op::TypeStruct);
-
-        // if there are less then two members there is no offset to use
-        if struct_instruction.operands.len() < 2 {
-            return Ok(0);
-        }
-
-        let result_id = match struct_instruction.result_id {
-            Some(id) => id,
-            None => return Err(ReflectError::MissingResultId(struct_instruction.clone())),
-        };
-
-        let variable = reflect
-            .debugs
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::Name)
-            .find_map(|i| {
-                if get_operand_at!(i, Operand::IdRef, 0).ok()? == result_id {
-                    Some(i)
-                } else {
-                    None
-                }
-            });
-
-        let variable = match variable {
-            Some(i) => i,
-            None => return Err(ReflectError::UnknownStruct(struct_instruction.clone())),
-        };
-
-        let idref = get_operand_at!(variable, Operand::IdRef, 0)?;
-        let annotations = Self::find_annotations_for_id(&reflect.annotations, idref)?;
-        let member_decorates = annotations
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
-            .collect::<Vec<_>>();
-
-        // return the value from the last offset member decoration
-        for i in member_decorates.iter().rev() {
-            let decoration = get_operand_at!(**i, Operand::Decoration, 2)?;
-            if let spirv::Decoration::Offset = decoration {
-                return Ok(get_operand_at!(**i, Operand::LiteralInt32, 3)?);
-            }
-        }
-
-        Ok(0)
-    }
-
-    fn calculate_variable_size_bytes(
-        reflect: &Module,
-        type_instruction: &Instruction,
-    ) -> Result<u32, ReflectError> {
-        match type_instruction.class.opcode {
-            spirv::Op::TypeInt | spirv::Op::TypeFloat => {
-                debug_assert!(!type_instruction.operands.is_empty());
-                Ok(get_operand_at!(type_instruction, Operand::LiteralInt32, 0)? / 8)
-            }
-            spirv::Op::TypeVector | spirv::Op::TypeMatrix => {
-                debug_assert!(type_instruction.operands.len() == 2);
-                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
-                let var_type_instruction =
-                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
-                let type_size_bytes =
-                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
-
-                let type_constant_count =
-                    get_operand_at!(type_instruction, Operand::LiteralInt32, 1)?;
-                Ok(type_size_bytes * type_constant_count)
-            }
-            spirv::Op::TypeArray => {
-                debug_assert!(type_instruction.operands.len() == 2);
-                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
-                let var_type_instruction =
-                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
-                let type_size_bytes =
-                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
-
-                let var_constant_id = get_operand_at!(type_instruction, Operand::IdRef, 1)?;
-                let constant_instruction =
-                    Self::find_assignment_for(&reflect.types_global_values, var_constant_id)?;
-                let type_constant_count =
-                    get_operand_at!(constant_instruction, Operand::LiteralInt32, 0)?;
-
-                Ok(type_size_bytes * type_constant_count)
-            }
-            spirv::Op::TypeStruct => {
-                if !type_instruction.operands.is_empty() {
-                    let byte_offset = Self::byte_offset_to_last_var(reflect, type_instruction)?;
-                    let last_var_idx = type_instruction.operands.len() - 1;
-                    let id_ref = get_operand_at!(type_instruction, Operand::IdRef, last_var_idx)?;
-                    let type_instruction =
-                        Self::find_assignment_for(&reflect.types_global_values, id_ref)?;
-                    Ok(byte_offset
-                        + Self::calculate_variable_size_bytes(reflect, type_instruction)?)
-                } else {
-                    Ok(0)
-                }
-            }
-            _ => Ok(0),
-        }
-    }
-
-    pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
-        let reflect = &self.0;
-
-        let push_constants = reflect
-            .types_global_values
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::Variable)
-            .filter_map(|i| {
-                let cls = get_operand_at!(*i, Operand::StorageClass, 0);
-                match cls {
-                    Ok(cls) if cls == spirv::StorageClass::PushConstant => Some(Ok(i)),
-                    Err(err) => Some(Err(err)),
-                    _ => None,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        if push_constants.len() > 1 {
-            return Err(ReflectError::TooManyPushConstants);
-        }
-
-        let push_constant = if let Some(push_constant) = push_constants.into_iter().next() {
-            match push_constant {
-                Ok(push_constant) => push_constant,
-                Err(err) => return Err(err),
-            }
-        } else {
-            return Ok(None);
-        };
-
-        let instruction = Reflection::find_assignment_for(
-            &reflect.types_global_values,
-            push_constant.result_type.unwrap(),
-        )?;
-
-        // resolve type if the type instruction is a pointer
-        let instruction = if instruction.class.opcode == spirv::Op::TypePointer {
-            let ptr_storage_class = get_operand_at!(instruction, Operand::StorageClass, 0)?;
-            assert_eq!(spirv::StorageClass::PushConstant, ptr_storage_class);
-            let element_type_id = get_operand_at!(instruction, Operand::IdRef, 1)?;
-            Reflection::find_assignment_for(&reflect.types_global_values, element_type_id)?
-        } else {
-            instruction
-        };
-
-        let size_bytes = Self::calculate_variable_size_bytes(reflect, instruction)?;
-
-        Ok(Some(PushConstantInfo {
-            size: size_bytes,
-            offset: 0,
-        }))
-    }
-
     /// Return a nested HashMap, the first HashMap is key'd off of the descriptor set,
     /// the second HashMap is key'd off of the descriptor index.
     pub fn get_descriptor_sets(&self) -> Result<HashMap<u32, HashMap<u32, DescriptorInfo>>> {
@@ -560,6 +402,163 @@ impl Reflection {
             }
         }
         Ok(unique_sets)
+    }
+
+    fn byte_offset_to_last_var(
+        reflect: &Module,
+        struct_instruction: &Instruction,
+    ) -> Result<u32, ReflectError> {
+        debug_assert!(struct_instruction.class.opcode == spirv::Op::TypeStruct);
+
+        // if there are less then two members there is no offset to use, early out
+        if struct_instruction.operands.len() < 2 {
+            return Ok(0);
+        }
+
+        let result_id = struct_instruction
+            .result_id
+            .ok_or_else(|| ReflectError::MissingResultId(struct_instruction.clone()))?;
+
+        let variable_id = reflect
+            .debugs
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::Name)
+            .find_map(|i| {
+                let id = get_operand_at!(i, Operand::IdRef, 0).ok()?;
+                if id == result_id {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| ReflectError::UnknownStruct(struct_instruction.clone()))?;
+
+        let annotations = Self::find_annotations_for_id(&reflect.annotations, variable_id)?;
+        let member_decorates = annotations
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
+            .collect::<Vec<_>>();
+
+        // return the highest offset value
+        Ok(*member_decorates
+            .iter()
+            .filter_map(|i| match get_operand_at!(**i, Operand::Decoration, 2) {
+                Ok(decoration) if decoration == spirv::Decoration::Offset => {
+                    match get_operand_at!(**i, Operand::LiteralInt32, 3) {
+                        Ok(val) => Some(Ok(val)),
+                        Err(err) => Some(Err(err)),
+                    }
+                }
+                Err(err) => Some(Err(err)),
+                _ => None,
+            })
+            .collect::<Result<Vec<_>>>()?
+            .iter()
+            .max()
+            .unwrap_or(&0))
+    }
+
+    fn calculate_variable_size_bytes(
+        reflect: &Module,
+        type_instruction: &Instruction,
+    ) -> Result<u32, ReflectError> {
+        match type_instruction.class.opcode {
+            spirv::Op::TypeInt | spirv::Op::TypeFloat => {
+                debug_assert!(!type_instruction.operands.is_empty());
+                Ok(get_operand_at!(type_instruction, Operand::LiteralInt32, 0)? / 8)
+            }
+            spirv::Op::TypeVector | spirv::Op::TypeMatrix => {
+                debug_assert!(type_instruction.operands.len() == 2);
+                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
+                let var_type_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
+                let type_size_bytes =
+                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
+
+                let type_constant_count =
+                    get_operand_at!(type_instruction, Operand::LiteralInt32, 1)?;
+                Ok(type_size_bytes * type_constant_count)
+            }
+            spirv::Op::TypeArray => {
+                debug_assert!(type_instruction.operands.len() == 2);
+                let type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
+                let var_type_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, type_id)?;
+                let type_size_bytes =
+                    Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
+
+                let var_constant_id = get_operand_at!(type_instruction, Operand::IdRef, 1)?;
+                let constant_instruction =
+                    Self::find_assignment_for(&reflect.types_global_values, var_constant_id)?;
+                let type_constant_count =
+                    get_operand_at!(constant_instruction, Operand::LiteralInt32, 0)?;
+
+                Ok(type_size_bytes * type_constant_count)
+            }
+            spirv::Op::TypeStruct => {
+                if !type_instruction.operands.is_empty() {
+                    let byte_offset = Self::byte_offset_to_last_var(reflect, type_instruction)?;
+                    let last_var_idx = type_instruction.operands.len() - 1;
+                    let id_ref = get_operand_at!(type_instruction, Operand::IdRef, last_var_idx)?;
+                    let type_instruction =
+                        Self::find_assignment_for(&reflect.types_global_values, id_ref)?;
+                    Ok(byte_offset
+                        + Self::calculate_variable_size_bytes(reflect, type_instruction)?)
+                } else {
+                    Ok(0)
+                }
+            }
+            _ => Ok(0),
+        }
+    }
+
+    pub fn get_push_constant_range(&self) -> Result<Option<PushConstantInfo>, ReflectError> {
+        let reflect = &self.0;
+
+        let push_constants = reflect
+            .types_global_values
+            .iter()
+            .filter(|i| i.class.opcode == spirv::Op::Variable)
+            .filter_map(|i| {
+                let cls = get_operand_at!(*i, Operand::StorageClass, 0);
+                match cls {
+                    Ok(cls) if cls == spirv::StorageClass::PushConstant => Some(Ok(i)),
+                    Err(err) => Some(Err(err)),
+                    _ => None,
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if push_constants.len() > 1 {
+            return Err(ReflectError::TooManyPushConstants);
+        }
+
+        let push_constant = match push_constants.into_iter().next() {
+            Some(push_constant) => push_constant,
+            None => return Ok(None),
+        };
+
+        let instruction = Reflection::find_assignment_for(
+            &reflect.types_global_values,
+            push_constant.result_type.unwrap(),
+        )?;
+
+        // resolve type if the type instruction is a pointer
+        let instruction = if instruction.class.opcode == spirv::Op::TypePointer {
+            let ptr_storage_class = get_operand_at!(instruction, Operand::StorageClass, 0)?;
+            assert_eq!(spirv::StorageClass::PushConstant, ptr_storage_class);
+            let element_type_id = get_operand_at!(instruction, Operand::IdRef, 1)?;
+            Reflection::find_assignment_for(&reflect.types_global_values, element_type_id)?
+        } else {
+            instruction
+        };
+
+        let size_bytes = Self::calculate_variable_size_bytes(reflect, instruction)?;
+
+        Ok(Some(PushConstantInfo {
+            size: size_bytes,
+            offset: 0,
+        }))
     }
 
     pub fn disassemble(&self) -> String {
