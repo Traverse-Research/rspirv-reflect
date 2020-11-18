@@ -421,7 +421,7 @@ impl Reflection {
 
         // return the highest offset value
         Ok(
-            *Self::find_annotations_for_id(&reflect.annotations, result_id)?
+            Self::find_annotations_for_id(&reflect.annotations, result_id)?
                 .iter()
                 .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
                 .filter_map(|&i| match get_operand_at!(i, Operand::Decoration, 2) {
@@ -432,9 +432,9 @@ impl Reflection {
                     _ => None,
                 })
                 .collect::<Result<Vec<_>>>()?
-                .iter()
+                .into_iter()
                 .max()
-                .unwrap_or(&0),
+                .unwrap_or(0),
         )
     }
 
