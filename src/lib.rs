@@ -419,29 +419,23 @@ impl Reflection {
             .result_id
             .ok_or_else(|| ReflectError::MissingResultId(struct_instruction.clone()))?;
 
-        let annotations = Self::find_annotations_for_id(&reflect.annotations, result_id)?;
-        let member_decorates = annotations
-            .iter()
-            .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
-            .collect::<Vec<_>>();
-
         // return the highest offset value
-        Ok(*member_decorates
-            .iter()
-            .filter_map(|i| match get_operand_at!(**i, Operand::Decoration, 2) {
-                Ok(decoration) if decoration == spirv::Decoration::Offset => {
-                    match get_operand_at!(**i, Operand::LiteralInt32, 3) {
-                        Ok(val) => Some(Ok(val)),
-                        Err(err) => Some(Err(err)),
+        Ok(
+            *Self::find_annotations_for_id(&reflect.annotations, result_id)?
+                .iter()
+                .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
+                .filter_map(|&i| match get_operand_at!(i, Operand::Decoration, 2) {
+                    Ok(decoration) if decoration == spirv::Decoration::Offset => {
+                        Some(get_operand_at!(i, Operand::LiteralInt32, 3))
                     }
-                }
-                Err(err) => Some(Err(err)),
-                _ => None,
-            })
-            .collect::<Result<Vec<_>>>()?
-            .iter()
-            .max()
-            .unwrap_or(&0))
+                    Err(err) => Some(Err(err)),
+                    _ => None,
+                })
+                .collect::<Result<Vec<_>>>()?
+                .iter()
+                .max()
+                .unwrap_or(&0),
+        )
     }
 
     fn calculate_variable_size_bytes(
