@@ -154,7 +154,7 @@ impl Reflection {
         instructions
             .iter()
             .find(|instr| instr.result_id == Some(id))
-            .ok_or_else(|| ReflectError::UnassignedResultId(id))
+            .ok_or(ReflectError::UnassignedResultId(id))
     }
 
     /// Returns the descriptor type for a given variable `type_id`
@@ -264,7 +264,7 @@ impl Reflection {
                     .0
                     .header
                     .as_ref()
-                    .ok_or_else(|| ReflectError::MissingHeader)?
+                    .ok_or(ReflectError::MissingHeader)?
                     .version()
                     > (1, 3)
                 {
