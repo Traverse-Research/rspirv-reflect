@@ -13,7 +13,7 @@ This is a minimal dependency, SPIR-V reflection library written in rust. It uses
 
 ```toml
 [dependencies]
-rspirv-reflect = "0.2"
+rspirv-reflect = "0.3.0"
 ```
 
 ### License
