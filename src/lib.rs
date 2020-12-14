@@ -73,7 +73,8 @@ impl DescriptorType {
     pub const INPUT_ATTACHMENT: Self = Self(10);
 
     pub const INLINE_UNIFORM_BLOCK_EXT: Self = Self(1_000_138_000);
-    pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_165_000);
+    pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_150_000);
+    pub const ACCELERATION_STRUCTURE_NV: Self = Self(1_000_165_000);
 }
 
 #[derive(Debug, Clone, PartialEq)]
