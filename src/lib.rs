@@ -284,14 +284,18 @@ impl Reflection {
                     }
                 }
 
-                if self
-                    .0
-                    .header
-                    .as_ref()
-                    .ok_or(ReflectError::MissingHeader)?
-                    .version()
-                    > (1, 3)
-                {
+                let version = self
+                .0
+                .header
+                .as_ref()
+                .ok_or(ReflectError::MissingHeader)?
+                .version();
+
+                if version <= (1, 3) && is_storage_buffer {
+                    // BufferBlock is still support in 1.3 exactly.
+                    DescriptorType::STORAGE_BUFFER
+                } else if version >= (1, 3) {
+                    // From 1.3, StorageClass is supported.
                     assert_eq!(
                         is_storage_buffer, false,
                         "BufferBlock decoration is obsolete in SPIRV > 1.3"
@@ -300,7 +304,6 @@ impl Reflection {
                         is_uniform_buffer, true,
                         "Struct requires Block annotation in SPIRV > 1.3"
                     );
-
                     match storage_class {
                         spirv::StorageClass::Uniform | spirv::StorageClass::UniformConstant => {
                             DescriptorType::UNIFORM_BUFFER
@@ -310,8 +313,6 @@ impl Reflection {
                     }
                 } else if is_uniform_buffer {
                     DescriptorType::UNIFORM_BUFFER
-                } else if is_storage_buffer {
-                    DescriptorType::STORAGE_BUFFER
                 } else {
                     return Err(ReflectError::UnknownStruct(type_instruction.clone()));
                 }
