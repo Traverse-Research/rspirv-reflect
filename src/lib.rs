@@ -55,10 +55,11 @@ type Result<V, E = ReflectError> = ::std::result::Result<V, E>;
 
 /// These are bit-exact with ash and the Vulkan specification,
 /// they're mirrored here to prevent a dependency on ash
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct DescriptorType(pub u32);
 
+// TODO: Possibly change to a C-like enum to get automatic Debug?
 impl DescriptorType {
     pub const SAMPLER: Self = Self(0);
     pub const COMBINED_IMAGE_SAMPLER: Self = Self(1);
@@ -75,6 +76,28 @@ impl DescriptorType {
     pub const INLINE_UNIFORM_BLOCK_EXT: Self = Self(1_000_138_000);
     pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_150_000);
     pub const ACCELERATION_STRUCTURE_NV: Self = Self(1_000_165_000);
+}
+
+impl std::fmt::Debug for DescriptorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match *self {
+            Self::SAMPLER => "SAMPLER",
+            Self::COMBINED_IMAGE_SAMPLER => "COMBINED_IMAGE_SAMPLER",
+            Self::SAMPLED_IMAGE => "SAMPLED_IMAGE",
+            Self::STORAGE_IMAGE => "STORAGE_IMAGE",
+            Self::UNIFORM_TEXEL_BUFFER => "UNIFORM_TEXEL_BUFFER",
+            Self::STORAGE_TEXEL_BUFFER => "STORAGE_TEXEL_BUFFER",
+            Self::UNIFORM_BUFFER => "UNIFORM_BUFFER",
+            Self::STORAGE_BUFFER => "STORAGE_BUFFER",
+            Self::UNIFORM_BUFFER_DYNAMIC => "UNIFORM_BUFFER_DYNAMIC",
+            Self::STORAGE_BUFFER_DYNAMIC => "STORAGE_BUFFER_DYNAMIC",
+            Self::INPUT_ATTACHMENT => "INPUT_ATTACHMENT",
+            Self::INLINE_UNIFORM_BLOCK_EXT => "INLINE_UNIFORM_BLOCK_EXT",
+            Self::ACCELERATION_STRUCTURE_KHR => "ACCELERATION_STRUCTURE_KHR",
+            Self::ACCELERATION_STRUCTURE_NV => "ACCELERATION_STRUCTURE_NV",
+            _ => "(UNDEFINED)"
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -261,14 +284,18 @@ impl Reflection {
                     }
                 }
 
-                if self
-                    .0
-                    .header
-                    .as_ref()
-                    .ok_or(ReflectError::MissingHeader)?
-                    .version()
-                    > (1, 3)
-                {
+                let version = self
+                .0
+                .header
+                .as_ref()
+                .ok_or(ReflectError::MissingHeader)?
+                .version();
+
+                if version <= (1, 3) && is_storage_buffer {
+                    // BufferBlock is still support in 1.3 exactly.
+                    DescriptorType::STORAGE_BUFFER
+                } else if version >= (1, 3) {
+                    // From 1.3, StorageClass is supported.
                     assert_eq!(
                         is_storage_buffer, false,
                         "BufferBlock decoration is obsolete in SPIRV > 1.3"
@@ -277,7 +304,6 @@ impl Reflection {
                         is_uniform_buffer, true,
                         "Struct requires Block annotation in SPIRV > 1.3"
                     );
-
                     match storage_class {
                         spirv::StorageClass::Uniform | spirv::StorageClass::UniformConstant => {
                             DescriptorType::UNIFORM_BUFFER
@@ -287,8 +313,6 @@ impl Reflection {
                     }
                 } else if is_uniform_buffer {
                     DescriptorType::UNIFORM_BUFFER
-                } else if is_storage_buffer {
-                    DescriptorType::STORAGE_BUFFER
                 } else {
                     return Err(ReflectError::UnknownStruct(type_instruction.clone()));
                 }
