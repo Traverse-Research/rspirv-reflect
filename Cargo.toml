@@ -13,5 +13,5 @@ repository = "https://github.com/Traverse-Research/rspirv-reflect"
 documentation = "https://docs.rs/rspirv-reflect"
 
 [dependencies]
-rspirv = "0.7"
+rspirv = "0.10"
 thiserror = "1.0"
