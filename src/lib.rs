@@ -95,7 +95,7 @@ impl std::fmt::Debug for DescriptorType {
             Self::INLINE_UNIFORM_BLOCK_EXT => "INLINE_UNIFORM_BLOCK_EXT",
             Self::ACCELERATION_STRUCTURE_KHR => "ACCELERATION_STRUCTURE_KHR",
             Self::ACCELERATION_STRUCTURE_NV => "ACCELERATION_STRUCTURE_NV",
-            _ => "(UNDEFINED)"
+            _ => "(UNDEFINED)",
         })
     }
 }
@@ -285,23 +285,23 @@ impl Reflection {
                 }
 
                 let version = self
-                .0
-                .header
-                .as_ref()
-                .ok_or(ReflectError::MissingHeader)?
-                .version();
+                    .0
+                    .header
+                    .as_ref()
+                    .ok_or(ReflectError::MissingHeader)?
+                    .version();
 
                 if version <= (1, 3) && is_storage_buffer {
                     // BufferBlock is still support in 1.3 exactly.
                     DescriptorType::STORAGE_BUFFER
                 } else if version >= (1, 3) {
                     // From 1.3, StorageClass is supported.
-                    assert_eq!(
-                        is_storage_buffer, false,
+                    assert!(
+                        !is_storage_buffer,
                         "BufferBlock decoration is obsolete in SPIRV > 1.3"
                     );
-                    assert_eq!(
-                        is_uniform_buffer, true,
+                    assert!(
+                        is_uniform_buffer,
                         "Struct requires Block annotation in SPIRV > 1.3"
                     );
                     match storage_class {
