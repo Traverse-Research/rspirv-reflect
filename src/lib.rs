@@ -360,7 +360,7 @@ impl Reflection {
             .collect::<Result<Vec<_>, _>>()?;
 
         let names = reflect
-            .debugs
+            .debug_names
             .iter()
             .filter(|i| i.class.opcode == spirv::Op::Name)
             .map(|i| -> Result<(u32, String)> {
