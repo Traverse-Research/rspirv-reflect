@@ -203,7 +203,7 @@ impl Reflection {
 
         // Weave with recursive types
         match type_instruction.class.opcode {
-            spirv::Op::TypeRuntimeArray => {
+            spirv::Op::TypeArray | spirv::Op::TypeRuntimeArray => {
                 let element_type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
                 return Ok(DescriptorInfo {
                     is_bindless: true,
