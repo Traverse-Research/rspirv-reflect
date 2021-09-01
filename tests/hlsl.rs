@@ -22,6 +22,8 @@ fn hlsl_bindings() {
     let set4 = &sets[&4];
     let set5 = &sets[&5];
     let set6 = &sets[&6];
+    let set7 = &sets[&7];
+    let set8 = &sets[&8];
 
     assert_eq!(
         set0[&0],
@@ -99,6 +101,42 @@ fn hlsl_bindings() {
         set6[&0],
         DescriptorInfo {
             name: "g_byteAddressBuffer".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            is_bindless: true
+        }
+    );
+
+    assert_eq!(
+        set7[&0],
+        DescriptorInfo {
+            name: "g_rwbyteAddressBuffer".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            is_bindless: false
+        }
+    );
+
+    assert_eq!(
+        set8[&0],
+        DescriptorInfo {
+            name: "g_inputArray".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            is_bindless: false
+        }
+    );
+
+    assert_eq!(
+        set8[&1],
+        DescriptorInfo {
+            name: "g_arrayOfInputs".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            is_bindless: false
+        }
+    );
+
+    assert_eq!(
+        set8[&6],
+        DescriptorInfo {
+            name: "g_bindlessInputArray".to_string(),
             ty: DescriptorType::STORAGE_BUFFER,
             is_bindless: true
         }

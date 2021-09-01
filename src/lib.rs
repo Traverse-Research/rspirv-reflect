@@ -103,6 +103,7 @@ impl std::fmt::Debug for DescriptorType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DescriptorInfo {
     pub ty: DescriptorType,
+    /// Whether this binding is an unbounded array of one or more resources
     pub is_bindless: bool,
     pub name: String,
 }
@@ -206,7 +207,7 @@ impl Reflection {
             spirv::Op::TypeArray | spirv::Op::TypeRuntimeArray => {
                 let element_type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
                 return Ok(DescriptorInfo {
-                    is_bindless: true,
+                    is_bindless: type_instruction.class.opcode == spirv::Op::TypeRuntimeArray,
                     ..self.get_descriptor_type_for_var(element_type_id, storage_class)?
                 });
             }
