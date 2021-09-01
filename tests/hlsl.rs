@@ -2,7 +2,7 @@ use rspirv_reflect::*;
 
 #[test]
 fn hlsl_bindings() {
-    let spirv = include_bytes!("shader-hlsl.spv");
+    let spirv = include_bytes!("shader_cs-hlsl.spv");
 
     let reflect = Reflection::new_from_spirv(spirv)
         .expect("Failed to create reflection module from spirv code");
