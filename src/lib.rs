@@ -7,6 +7,8 @@
 use rspirv::binary::Parser;
 use rspirv::dr::{Instruction, Loader, Module, Operand};
 use std::collections::HashMap;
+use std::convert::TryInto;
+use std::num::TryFromIntError;
 use thiserror::Error;
 
 pub use rspirv;
@@ -49,6 +51,10 @@ pub enum ReflectError {
     TooManyPushConstants,
     #[error("SPIR-V parse error")]
     ParseError(#[from] rspirv::binary::ParseState),
+    #[error("OpTypeInt cannot have width {0}")]
+    UnexpectedIntWidth(u32),
+    #[error(transparent)]
+    TryFromIntError(#[from] TryFromIntError),
 }
 
 type Result<V, E = ReflectError> = ::std::result::Result<V, E>;
@@ -101,10 +107,36 @@ impl std::fmt::Debug for DescriptorType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum BindingCount {
+    /// A single resource binding.
+    ///
+    /// # Example
+    /// ```hlsl
+    /// StructuredBuffer<uint>
+    /// ```
+    One,
+    /// Predetermined number of resource bindings.
+    ///
+    /// # Example
+    /// ```hlsl
+    /// StructuredBuffer<uint> myBinding[4]
+    /// ```
+    StaticSized(usize),
+    /// Variable number of resource bindings (usually dubbed "bindless").
+    ///
+    /// Count is determined in `vkDescriptorSetLayoutBinding`. No other bindings should follow in this set.
+    ///
+    /// # Example
+    /// ```hlsl
+    /// StructuredBuffer<uint> myBinding[]
+    /// ```
+    Unbounded,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct DescriptorInfo {
     pub ty: DescriptorType,
-    /// Whether this binding is an unbounded array of one or more resources
-    pub is_bindless: bool,
+    pub binding_count: BindingCount,
     pub name: String,
 }
 
@@ -204,10 +236,34 @@ impl Reflection {
 
         // Weave with recursive types
         match type_instruction.class.opcode {
-            spirv::Op::TypeArray | spirv::Op::TypeRuntimeArray => {
+            spirv::Op::TypeArray => {
+                let element_type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
+                let num_elements_id = get_operand_at!(type_instruction, Operand::IdRef, 1)?;
+                let num_elements =
+                    Self::find_assignment_for(&self.0.types_global_values, num_elements_id)?;
+                assert_eq!(num_elements.class.opcode, spirv::Op::Constant);
+                let num_elements_ty = Self::find_assignment_for(
+                    &self.0.types_global_values,
+                    num_elements.result_type.unwrap(),
+                )?;
+                // Array size can be any width, any signedness
+                assert_eq!(num_elements_ty.class.opcode, spirv::Op::TypeInt);
+                let num_elements = match get_operand_at!(num_elements_ty, Operand::LiteralInt32, 0)?
+                {
+                    32 => get_operand_at!(num_elements, Operand::LiteralInt32, 0)?.try_into()?,
+                    64 => get_operand_at!(num_elements, Operand::LiteralInt64, 0)?.try_into()?,
+                    x => return Err(ReflectError::UnexpectedIntWidth(x)),
+                };
+                assert!(num_elements >= 1);
+                return Ok(DescriptorInfo {
+                    binding_count: BindingCount::StaticSized(num_elements),
+                    ..self.get_descriptor_type_for_var(element_type_id, storage_class)?
+                });
+            }
+            spirv::Op::TypeRuntimeArray => {
                 let element_type_id = get_operand_at!(type_instruction, Operand::IdRef, 0)?;
                 return Ok(DescriptorInfo {
-                    is_bindless: type_instruction.class.opcode == spirv::Op::TypeRuntimeArray,
+                    binding_count: BindingCount::Unbounded,
                     ..self.get_descriptor_type_for_var(element_type_id, storage_class)?
                 });
             }
@@ -329,7 +385,7 @@ impl Reflection {
 
         Ok(DescriptorInfo {
             ty: descriptor_type,
-            is_bindless: false,
+            binding_count: BindingCount::One,
             name: "".to_string(),
         })
     }
