@@ -2,7 +2,7 @@ use rspirv_reflect::*;
 
 #[test]
 fn hlsl_bindings() {
-    let spirv = include_bytes!("shader-hlsl.spv");
+    let spirv = include_bytes!("shader_cs-hlsl.spv");
 
     let reflect = Reflection::new_from_spirv(spirv)
         .expect("Failed to create reflection module from spirv code");
@@ -22,13 +22,15 @@ fn hlsl_bindings() {
     let set4 = &sets[&4];
     let set5 = &sets[&5];
     let set6 = &sets[&6];
+    let set7 = &sets[&7];
+    let set8 = &sets[&8];
 
     assert_eq!(
         set0[&0],
         DescriptorInfo {
             name: "g_input".to_string(),
             ty: DescriptorType::STORAGE_BUFFER,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -37,7 +39,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_output".to_string(),
             ty: DescriptorType::STORAGE_BUFFER,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -46,7 +48,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_constant".to_string(),
             ty: DescriptorType::UNIFORM_BUFFER,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -55,7 +57,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_bindlessInput".to_string(),
             ty: DescriptorType::STORAGE_BUFFER,
-            is_bindless: true
+            binding_count: BindingCount::Unbounded
         }
     );
 
@@ -64,7 +66,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_texture2d".to_string(),
             ty: DescriptorType::SAMPLED_IMAGE,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -73,7 +75,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_rwtexture2d".to_string(),
             ty: DescriptorType::STORAGE_IMAGE,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -82,7 +84,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_bindlessrwtexture2d".to_string(),
             ty: DescriptorType::STORAGE_IMAGE,
-            is_bindless: true
+            binding_count: BindingCount::Unbounded
         }
     );
 
@@ -91,7 +93,7 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_sampler".to_string(),
             ty: DescriptorType::SAMPLER,
-            is_bindless: false
+            binding_count: BindingCount::One
         }
     );
 
@@ -100,7 +102,43 @@ fn hlsl_bindings() {
         DescriptorInfo {
             name: "g_byteAddressBuffer".to_string(),
             ty: DescriptorType::STORAGE_BUFFER,
-            is_bindless: true
+            binding_count: BindingCount::Unbounded
+        }
+    );
+
+    assert_eq!(
+        set7[&0],
+        DescriptorInfo {
+            name: "g_rwbyteAddressBuffer".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            binding_count: BindingCount::One
+        }
+    );
+
+    assert_eq!(
+        set8[&0],
+        DescriptorInfo {
+            name: "g_inputArray".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            binding_count: BindingCount::One
+        }
+    );
+
+    assert_eq!(
+        set8[&1],
+        DescriptorInfo {
+            name: "g_arrayOfInputs".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            binding_count: BindingCount::StaticSized(4)
+        }
+    );
+
+    assert_eq!(
+        set8[&6],
+        DescriptorInfo {
+            name: "g_bindlessInputArray".to_string(),
+            ty: DescriptorType::STORAGE_BUFFER,
+            binding_count: BindingCount::Unbounded
         }
     );
 }
