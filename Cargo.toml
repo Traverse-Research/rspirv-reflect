@@ -1,6 +1,6 @@
 [package]
 name = "rspirv-reflect"
-version = "0.4.1"
+version = "0.5.0"
 description = "Simple descriptor reflection library for SPIR-V"
 authors = ["Traverse Research <support@traverseresearch.nl>"]
 edition = "2018"
