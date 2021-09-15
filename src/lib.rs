@@ -6,7 +6,7 @@
 //! ```
 use rspirv::binary::Parser;
 use rspirv::dr::{Instruction, Loader, Module, Operand};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::num::TryFromIntError;
 use thiserror::Error;
@@ -390,10 +390,10 @@ impl Reflection {
         })
     }
 
-    /// Return a nested HashMap, the first HashMap is key'd off of the descriptor set,
-    /// the second HashMap is key'd off of the descriptor index.
-    pub fn get_descriptor_sets(&self) -> Result<HashMap<u32, HashMap<u32, DescriptorInfo>>> {
-        let mut unique_sets = HashMap::new();
+    /// Returns a nested mapping, where the first level maps descriptor set indices (register spaces)
+    /// and the second level maps descriptor binding indices (registers) to descriptor information.
+    pub fn get_descriptor_sets(&self) -> Result<BTreeMap<u32, BTreeMap<u32, DescriptorInfo>>> {
+        let mut unique_sets = BTreeMap::new();
         let reflect = &self.0;
 
         let uniform_variables = reflect
@@ -425,7 +425,7 @@ impl Reflection {
                 let name = get_ref_operand_at!(i, Operand::LiteralString, 1)?;
                 Ok((element_type_id, name.clone()))
             })
-            .collect::<Result<HashMap<_, _>, _>>()?;
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
 
         for var in uniform_variables {
             if let Some(var_id) = var.result_id {
@@ -457,7 +457,7 @@ impl Reflection {
 
                 let current_set = /* &mut */ unique_sets
                     .entry(set)
-                    .or_insert_with(HashMap::<u32, DescriptorInfo>::new);
+                    .or_insert_with(BTreeMap::<u32, DescriptorInfo>::new);
 
                 let storage_class = get_operand_at!(var, Operand::StorageClass, 0)?;
 
