@@ -214,6 +214,22 @@ impl Reflection {
             .ok_or(ReflectError::UnassignedResultId(id))
     }
 
+    pub fn get_compute_group_size(&self) -> Option<(u32, u32, u32)> {
+        for inst in self.0.global_inst_iter() {
+            if inst.class.opcode as u32 == 16 {
+                // spirv_headers::Op::ExecutionMode
+                let cs_size = &inst.operands[2..5];
+                use rspirv::dr::Operand::LiteralInt32;
+                if let [LiteralInt32(x), LiteralInt32(y), LiteralInt32(z)] = *cs_size {
+                    return Some((x, y, z));
+                } else {
+                    // Invalid encoding? Ignoring.
+                }
+            }
+        }
+        return None;
+    }
+
     /// Returns the descriptor type for a given variable `type_id`
     fn get_descriptor_type_for_var(
         &self,
