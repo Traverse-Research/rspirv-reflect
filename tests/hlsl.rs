@@ -9,6 +9,8 @@ fn hlsl_bindings() {
 
     println!("{}", reflect.disassemble());
 
+    assert_eq!(reflect.get_compute_group_size(), Some((64, 1, 1)));
+
     let sets = reflect
         .get_descriptor_sets()
         .expect("Failed to extract descriptor sets");
