@@ -216,18 +216,19 @@ impl Reflection {
 
     pub fn get_compute_group_size(&self) -> Option<(u32, u32, u32)> {
         for inst in self.0.global_inst_iter() {
-            if inst.class.opcode as u32 == 16 {
-                // spirv_headers::Op::ExecutionMode
-                let cs_size = &inst.operands[2..5];
-                use rspirv::dr::Operand::LiteralInt32;
-                if let [LiteralInt32(x), LiteralInt32(y), LiteralInt32(z)] = *cs_size {
+            if inst.class.opcode == spirv::Op::ExecutionMode {
+                use rspirv::dr::Operand::{ExecutionMode, LiteralInt32};
+                if let [ExecutionMode(
+                    spirv::ExecutionMode::LocalSize | spirv::ExecutionMode::LocalSizeHint,
+                ), LiteralInt32(x), LiteralInt32(y), LiteralInt32(z)] = inst.operands[1..]
+                {
                     return Some((x, y, z));
                 } else {
                     // Invalid encoding? Ignoring.
                 }
             }
         }
-        return None;
+        None
     }
 
     /// Returns the descriptor type for a given variable `type_id`
