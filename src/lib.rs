@@ -57,6 +57,9 @@ pub enum ReflectError {
     TryFromIntError(#[from] TryFromIntError),
 }
 
+unsafe impl Send for ReflectError {}
+unsafe impl Sync for ReflectError {}
+
 type Result<V, E = ReflectError> = ::std::result::Result<V, E>;
 
 /// These are bit-exact with ash and the Vulkan specification,
