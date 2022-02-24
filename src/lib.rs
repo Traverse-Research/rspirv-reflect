@@ -64,49 +64,24 @@ type Result<V, E = ReflectError> = ::std::result::Result<V, E>;
 
 /// These are bit-exact with ash and the Vulkan specification,
 /// they're mirrored here to prevent a dependency on ash
-#[derive(Copy, Clone, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct DescriptorType(pub u32);
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[repr(u32)]
+pub enum DescriptorType {
+    Sampler = 0,
+    CombinedImageSampler = 1,
+    SampledImage = 2,
+    StorageImage = 3,
+    UniformTexelBuffer = 4,
+    StorageTexelBuffer = 5,
+    UniformBuffer = 6,
+    StorageBuffer = 7,
+    UniformBufferDynamic = 8,
+    StorageBufferDynamic = 9,
+    InputAttachment = 10,
 
-// TODO: Possibly change to a C-like enum to get automatic Debug?
-impl DescriptorType {
-    pub const SAMPLER: Self = Self(0);
-    pub const COMBINED_IMAGE_SAMPLER: Self = Self(1);
-    pub const SAMPLED_IMAGE: Self = Self(2);
-    pub const STORAGE_IMAGE: Self = Self(3);
-    pub const UNIFORM_TEXEL_BUFFER: Self = Self(4);
-    pub const STORAGE_TEXEL_BUFFER: Self = Self(5);
-    pub const UNIFORM_BUFFER: Self = Self(6);
-    pub const STORAGE_BUFFER: Self = Self(7);
-    pub const UNIFORM_BUFFER_DYNAMIC: Self = Self(8);
-    pub const STORAGE_BUFFER_DYNAMIC: Self = Self(9);
-    pub const INPUT_ATTACHMENT: Self = Self(10);
-
-    pub const INLINE_UNIFORM_BLOCK_EXT: Self = Self(1_000_138_000);
-    pub const ACCELERATION_STRUCTURE_KHR: Self = Self(1_000_150_000);
-    pub const ACCELERATION_STRUCTURE_NV: Self = Self(1_000_165_000);
-}
-
-impl std::fmt::Debug for DescriptorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match *self {
-            Self::SAMPLER => "SAMPLER",
-            Self::COMBINED_IMAGE_SAMPLER => "COMBINED_IMAGE_SAMPLER",
-            Self::SAMPLED_IMAGE => "SAMPLED_IMAGE",
-            Self::STORAGE_IMAGE => "STORAGE_IMAGE",
-            Self::UNIFORM_TEXEL_BUFFER => "UNIFORM_TEXEL_BUFFER",
-            Self::STORAGE_TEXEL_BUFFER => "STORAGE_TEXEL_BUFFER",
-            Self::UNIFORM_BUFFER => "UNIFORM_BUFFER",
-            Self::STORAGE_BUFFER => "STORAGE_BUFFER",
-            Self::UNIFORM_BUFFER_DYNAMIC => "UNIFORM_BUFFER_DYNAMIC",
-            Self::STORAGE_BUFFER_DYNAMIC => "STORAGE_BUFFER_DYNAMIC",
-            Self::INPUT_ATTACHMENT => "INPUT_ATTACHMENT",
-            Self::INLINE_UNIFORM_BLOCK_EXT => "INLINE_UNIFORM_BLOCK_EXT",
-            Self::ACCELERATION_STRUCTURE_KHR => "ACCELERATION_STRUCTURE_KHR",
-            Self::ACCELERATION_STRUCTURE_NV => "ACCELERATION_STRUCTURE_NV",
-            _ => "(UNDEFINED)",
-        })
-    }
+    InlineUniformBlockEXT = 1_000_138_000,
+    AccelerationStructureKHR = 1_000_150_000,
+    AccelerationStructureNV = 1_000_165_000
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -298,7 +273,7 @@ impl Reflection {
         }
 
         let descriptor_type = match type_instruction.class.opcode {
-            spirv::Op::TypeSampler => DescriptorType::SAMPLER,
+            spirv::Op::TypeSampler => DescriptorType::Sampler,
             spirv::Op::TypeImage => {
                 let dim = get_operand_at!(type_instruction, Operand::Dim, 1)?;
 
@@ -310,9 +285,9 @@ impl Reflection {
 
                 if dim == spirv::Dim::DimBuffer {
                     if sampled == IMAGE_SAMPLED {
-                        DescriptorType::UNIFORM_TEXEL_BUFFER
+                        DescriptorType::UniformTexelBuffer
                     } else if sampled == IMAGE_STORAGE {
-                        DescriptorType::STORAGE_TEXEL_BUFFER
+                        DescriptorType::StorageTexelBuffer
                     } else {
                         return Err(ReflectError::ImageSampledFieldUnknown(
                             type_instruction.clone(),
@@ -320,11 +295,11 @@ impl Reflection {
                         ));
                     }
                 } else if dim == spirv::Dim::DimSubpassData {
-                    DescriptorType::INPUT_ATTACHMENT
+                    DescriptorType::InputAttachment
                 } else if sampled == IMAGE_SAMPLED {
-                    DescriptorType::SAMPLED_IMAGE
+                    DescriptorType::SampledImage
                 } else if sampled == IMAGE_STORAGE {
-                    DescriptorType::STORAGE_IMAGE
+                    DescriptorType::StorageImage
                 } else {
                     return Err(ReflectError::ImageSampledFieldUnknown(
                         type_instruction.clone(),
@@ -370,7 +345,7 @@ impl Reflection {
 
                 if version <= (1, 3) && is_storage_buffer {
                     // BufferBlock is still support in 1.3 exactly.
-                    DescriptorType::STORAGE_BUFFER
+                    DescriptorType::StorageBuffer
                 } else if version >= (1, 3) {
                     // From 1.3, StorageClass is supported.
                     assert!(
@@ -383,19 +358,19 @@ impl Reflection {
                     );
                     match storage_class {
                         spirv::StorageClass::Uniform | spirv::StorageClass::UniformConstant => {
-                            DescriptorType::UNIFORM_BUFFER
+                            DescriptorType::UniformBuffer
                         }
-                        spirv::StorageClass::StorageBuffer => DescriptorType::STORAGE_BUFFER,
+                        spirv::StorageClass::StorageBuffer => DescriptorType::StorageBuffer,
                         _ => return Err(ReflectError::UnknownStorageClass(storage_class)),
                     }
                 } else if is_uniform_buffer {
-                    DescriptorType::UNIFORM_BUFFER
+                    DescriptorType::UniformBuffer
                 } else {
                     return Err(ReflectError::UnknownStruct(type_instruction.clone()));
                 }
             }
             // TODO: spirv_reflect translates nothing to {UNIFORM,STORAGE}_BUFFER_DYNAMIC
-            spirv::Op::TypeAccelerationStructureKHR => DescriptorType::ACCELERATION_STRUCTURE_KHR,
+            spirv::Op::TypeAccelerationStructureKHR => DescriptorType::AccelerationStructureKHR,
             _ => {
                 return Err(ReflectError::UnhandledTypeInstruction(
                     type_instruction.clone(),

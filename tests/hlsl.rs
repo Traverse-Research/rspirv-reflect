@@ -31,7 +31,7 @@ fn hlsl_bindings() {
         set0[&0],
         DescriptorInfo {
             name: "g_input".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::One
         }
     );
@@ -40,7 +40,7 @@ fn hlsl_bindings() {
         set0[&1],
         DescriptorInfo {
             name: "g_output".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::One
         }
     );
@@ -49,7 +49,7 @@ fn hlsl_bindings() {
         set0[&2],
         DescriptorInfo {
             name: "g_constant".to_string(),
-            ty: DescriptorType::UNIFORM_BUFFER,
+            ty: DescriptorType::UniformBuffer,
             binding_count: BindingCount::One
         }
     );
@@ -58,7 +58,7 @@ fn hlsl_bindings() {
         set1[&0],
         DescriptorInfo {
             name: "g_bindlessInput".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::Unbounded
         }
     );
@@ -67,7 +67,7 @@ fn hlsl_bindings() {
         set2[&0],
         DescriptorInfo {
             name: "g_texture2d".to_string(),
-            ty: DescriptorType::SAMPLED_IMAGE,
+            ty: DescriptorType::SampledImage,
             binding_count: BindingCount::One
         }
     );
@@ -76,7 +76,7 @@ fn hlsl_bindings() {
         set3[&0],
         DescriptorInfo {
             name: "g_rwtexture2d".to_string(),
-            ty: DescriptorType::STORAGE_IMAGE,
+            ty: DescriptorType::StorageImage,
             binding_count: BindingCount::One
         }
     );
@@ -85,7 +85,7 @@ fn hlsl_bindings() {
         set4[&0],
         DescriptorInfo {
             name: "g_bindlessrwtexture2d".to_string(),
-            ty: DescriptorType::STORAGE_IMAGE,
+            ty: DescriptorType::StorageImage,
             binding_count: BindingCount::Unbounded
         }
     );
@@ -94,7 +94,7 @@ fn hlsl_bindings() {
         set5[&0],
         DescriptorInfo {
             name: "g_sampler".to_string(),
-            ty: DescriptorType::SAMPLER,
+            ty: DescriptorType::Sampler,
             binding_count: BindingCount::One
         }
     );
@@ -103,7 +103,7 @@ fn hlsl_bindings() {
         set6[&0],
         DescriptorInfo {
             name: "g_byteAddressBuffer".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::Unbounded
         }
     );
@@ -112,7 +112,7 @@ fn hlsl_bindings() {
         set7[&0],
         DescriptorInfo {
             name: "g_rwbyteAddressBuffer".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::One
         }
     );
@@ -121,7 +121,7 @@ fn hlsl_bindings() {
         set8[&0],
         DescriptorInfo {
             name: "g_inputArray".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::One
         }
     );
@@ -130,7 +130,7 @@ fn hlsl_bindings() {
         set8[&1],
         DescriptorInfo {
             name: "g_arrayOfInputs".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::StaticSized(4)
         }
     );
@@ -139,7 +139,7 @@ fn hlsl_bindings() {
         set8[&6],
         DescriptorInfo {
             name: "g_bindlessInputArray".to_string(),
-            ty: DescriptorType::STORAGE_BUFFER,
+            ty: DescriptorType::StorageBuffer,
             binding_count: BindingCount::Unbounded
         }
     );
