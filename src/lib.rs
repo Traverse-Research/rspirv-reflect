@@ -81,7 +81,7 @@ pub enum DescriptorType {
 
     InlineUniformBlockEXT = 1_000_138_000,
     AccelerationStructureKHR = 1_000_150_000,
-    AccelerationStructureNV = 1_000_165_000
+    AccelerationStructureNV = 1_000_165_000,
 }
 
 #[derive(Debug, Clone, PartialEq)]
