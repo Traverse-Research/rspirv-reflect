@@ -209,6 +209,17 @@ impl Reflection {
         None
     }
 
+    pub fn get_execution_model(&self) -> Option<spirv::ExecutionModel>{
+        for inst in self.0.global_inst_iter() {
+            if inst.class.opcode == spirv::Op::EntryPoint {
+                if let rspirv::dr::Operand::ExecutionModel(model) = inst.operands[0] {
+                    return Some(model)
+                }
+            }
+        }
+        None
+    }
+
     /// Returns the descriptor type for a given variable `type_id`
     fn get_descriptor_type_for_var(
         &self,
