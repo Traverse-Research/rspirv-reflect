@@ -209,11 +209,11 @@ impl Reflection {
         None
     }
 
-    pub fn get_execution_model(&self) -> Option<spirv::ExecutionModel>{
+    pub fn get_execution_model(&self) -> Option<spirv::ExecutionModel> {
         for inst in self.0.global_inst_iter() {
             if inst.class.opcode == spirv::Op::EntryPoint {
                 if let rspirv::dr::Operand::ExecutionModel(model) = inst.operands[0] {
-                    return Some(model)
+                    return Some(model);
                 }
             }
         }
