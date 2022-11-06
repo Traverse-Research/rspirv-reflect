@@ -1,7 +1,7 @@
 use rspirv_reflect::*;
 
 #[test]
-fn glsl_bindings() {
+fn bindings() {
     let spirv = include_bytes!("shader-glsl.spv");
 
     let reflect = Reflection::new_from_spirv(spirv)
@@ -154,4 +154,29 @@ fn glsl_bindings() {
             binding_count: BindingCount::One
         }
     );
+}
+
+#[test]
+fn push_constants() {
+    let spirv = include_bytes!("push_constants-glsl.spv");
+
+    let reflect = Reflection::new_from_spirv(spirv)
+        .expect("Failed to create reflection module from spirv code");
+
+    println!("{}", reflect.disassemble());
+
+    let range = reflect
+        .get_push_constant_range()
+        .expect("failed to extract push constants")
+        .expect("defined push constants not detected");
+
+    dbg!(range);
+
+    assert_eq!(
+        range,
+        PushConstantInfo {
+            offset: 0,
+            size: 16
+        }
+    )
 }

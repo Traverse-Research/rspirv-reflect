@@ -142,6 +142,7 @@ pub struct DescriptorInfo {
     pub name: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PushConstantInfo {
     pub offset: u32,
     pub size: u32,
