@@ -602,7 +602,7 @@ impl Reflection {
                     Ok(0)
                 }
             }
-            _ => Ok(0),
+            x => panic!("Size computation for {:?} unsupported", x),
         }
     }
 
