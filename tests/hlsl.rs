@@ -1,7 +1,7 @@
 use rspirv_reflect::*;
 
 #[test]
-fn hlsl_bindings() {
+fn bindings() {
     let spirv = include_bytes!("shader_cs-hlsl.spv");
 
     let reflect = Reflection::new_from_spirv(spirv)
@@ -147,7 +147,7 @@ fn hlsl_bindings() {
 
 #[test]
 fn push_constants() {
-    let spirv = include_bytes!("push_constant_tests_ps-hlsl.spv");
+    let spirv = include_bytes!("push_constants_ps-hlsl.spv");
     let reflect = Reflection::new_from_spirv(spirv)
         .expect("Failed to create reflection module from spirv code");
     let range = reflect

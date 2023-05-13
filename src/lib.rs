@@ -47,6 +47,8 @@ pub enum ReflectError {
     UnassignedResultId(u32),
     #[error("rspirv reflect lacks module header")]
     MissingHeader,
+    #[error("rspirv reflect lacks `OpMemoryModel`")]
+    MissingMemoryModel,
     #[error("Accidentally binding global parameter buffer. Global variables are currently not supported in HLSL")]
     BindingGlobalParameterBuffer,
     #[error("Only one push constant block can be defined per shader entry")]
@@ -55,6 +57,10 @@ pub enum ReflectError {
     ParseError(#[from] rspirv::binary::ParseState),
     #[error("OpTypeInt cannot have width {0}")]
     UnexpectedIntWidth(u32),
+    #[error(
+        "Invalid or unimplemented combination of AddressingModel {0:?} and StorageClass {1:?}"
+    )]
+    InvalidAddressingModelAndStorageClass(spirv::AddressingModel, spirv::StorageClass),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
 }
@@ -142,6 +148,7 @@ pub struct DescriptorInfo {
     pub name: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PushConstantInfo {
     pub offset: u32,
     pub size: u32,
@@ -500,11 +507,11 @@ impl Reflection {
 
                 if let Some(name) = names.get(&var_id) {
                     // TODO: Might do this way earlier
-                    if name.eq(&"$Globals") {
+                    if name == "$Globals" {
                         return Err(ReflectError::BindingGlobalParameterBuffer);
                     }
 
-                    descriptor_info.name = (*name).clone();
+                    descriptor_info.name = name.to_owned();
                 }
 
                 let inserted = current_set.insert(binding, descriptor_info);
@@ -601,7 +608,27 @@ impl Reflection {
                     Ok(0)
                 }
             }
-            _ => Ok(0),
+            spirv::Op::TypePointer => {
+                let memory_model = reflect
+                    .memory_model
+                    .as_ref()
+                    .ok_or(ReflectError::MissingMemoryModel)?;
+                let addressing_model = get_operand_at!(memory_model, Operand::AddressingModel, 0)?;
+
+                let storage_class = get_operand_at!(type_instruction, Operand::StorageClass, 0)?;
+
+                // https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#Addressing_Model
+                // https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#Storage_Class
+                match (addressing_model, storage_class) {
+                    (
+                        // https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/KHR/SPV_KHR_physical_storage_buffer.asciidoc
+                        spirv::AddressingModel::PhysicalStorageBuffer64,
+                        spirv::StorageClass::PhysicalStorageBuffer,
+                    ) => Ok(8),
+                    (a, s) => Err(ReflectError::InvalidAddressingModelAndStorageClass(a, s)),
+                }
+            }
+            x => panic!("Size computation for {:?} unsupported", x),
         }
     }
 
