@@ -11,6 +11,7 @@ categories = ["api-bindings", "rendering"]
 homepage = "https://traverseresearch.nl"
 repository = "https://github.com/Traverse-Research/rspirv-reflect"
 documentation = "https://docs.rs/rspirv-reflect"
+include = ["/src", "/LICENSE-APACHE", "/LICENSE-MIT"]
 
 [dependencies]
 rspirv = "0.11"
