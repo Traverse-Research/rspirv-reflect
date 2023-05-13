@@ -13,25 +13,25 @@ This is a minimal dependency, SPIR-V reflection library written in rust. It uses
 
 ```toml
 [dependencies]
-rspirv-reflect = "0.7.0"
+rspirv-reflect = "0.8.0"
 ```
 
-### License
+## License
 
 Licensed under either of
 
-* Apache License, Version 2.0, ([LICENSE-APACHE](../master/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license ([LICENSE-MIT](../master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0, ([LICENSE-APACHE](../master/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](../master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
 
-### Alternative libraries
+## Alternative libraries
 
- * [SPIR-Q](https://github.com/PENGUINLIONG/spirq-rs)
- * [spirv-reflect-rs](https://github.com/gwihlidal/spirv-reflect-rs)
- * [spirv_cross](https://github.com/grovesNL/spirv_cross) 
+- [SPIR-Q](https://github.com/PENGUINLIONG/spirq-rs)
+- [spirv-reflect-rs](https://github.com/gwihlidal/spirv-reflect-rs)
+- [spirv_cross](https://github.com/grovesNL/spirv_cross)
 
-### Contribution
+## Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally
 submitted for inclusion in the work by you, as defined in the Apache-2.0
