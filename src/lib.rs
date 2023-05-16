@@ -154,6 +154,13 @@ pub struct PushConstantInfo {
     pub size: u32,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntryPoint {
+    pub execution_model: spirv::ExecutionModel,
+    pub id: u32,
+    pub name: String,
+}
+
 macro_rules! get_ref_operand_at {
     // TODO: Can't we have a match arm that deals with `ops` containing `&instruction.operands`?
     ($instr:expr, $op:path, $idx:expr) => {
@@ -684,5 +691,24 @@ impl Reflection {
     pub fn disassemble(&self) -> String {
         use rspirv::binary::Disassemble;
         self.0.disassemble()
+    }
+
+    pub fn get_entry_points(&self) -> Result<Vec<EntryPoint>> {
+        let reflect = &self.0;
+        reflect
+            .entry_points
+            .iter()
+            .map(|entry_point| -> Result<EntryPoint> {
+                let execution_model = get_operand_at!(entry_point, Operand::ExecutionModel, 0)?;
+                let id = get_operand_at!(entry_point, Operand::IdRef, 1)?;
+                let name = get_ref_operand_at!(entry_point, Operand::LiteralString, 2)
+                    .map(Clone::clone)?;
+                Ok(EntryPoint {
+                    execution_model,
+                    id,
+                    name,
+                })
+            })
+            .collect()
     }
 }

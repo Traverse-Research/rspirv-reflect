@@ -180,3 +180,28 @@ fn push_constants() {
         }
     )
 }
+
+#[test]
+fn entry_points() {
+    let spirv = include_bytes!("shader-glsl.spv");
+
+    let reflect = Reflection::new_from_spirv(spirv)
+        .expect("Failed to create reflection module from spirv code");
+
+    println!("{}", reflect.disassemble());
+
+    let entry_points = reflect
+        .get_entry_points()
+        .expect("Failed to extract entry points");
+
+    dbg!(&entry_points);
+
+    assert_eq!(
+        entry_points,
+        vec![EntryPoint {
+            execution_model: spirv::ExecutionModel::GLCompute,
+            id: 4,
+            name: "main".to_string(),
+        }]
+    )
+}
