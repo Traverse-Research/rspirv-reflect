@@ -200,7 +200,7 @@ fn entry_points() {
         entry_points,
         vec![EntryPoint {
             execution_model: spirv::ExecutionModel::GLCompute,
-            id: 4,
+            function_id: 4,
             name: "main".to_string(),
         }]
     )

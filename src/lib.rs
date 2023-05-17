@@ -157,7 +157,7 @@ pub struct PushConstantInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryPoint {
     pub execution_model: spirv::ExecutionModel,
-    pub id: u32,
+    pub function_id: u32,
     pub name: String,
 }
 
@@ -698,14 +698,13 @@ impl Reflection {
         reflect
             .entry_points
             .iter()
-            .map(|entry_point| -> Result<EntryPoint> {
+            .map(|entry_point| {
                 let execution_model = get_operand_at!(entry_point, Operand::ExecutionModel, 0)?;
-                let id = get_operand_at!(entry_point, Operand::IdRef, 1)?;
-                let name = get_ref_operand_at!(entry_point, Operand::LiteralString, 2)
-                    .map(Clone::clone)?;
+                let function_id = get_operand_at!(entry_point, Operand::IdRef, 1)?;
+                let name = get_ref_operand_at!(entry_point, Operand::LiteralString, 2).cloned()?;
                 Ok(EntryPoint {
                     execution_model,
-                    id,
+                    function_id,
                     name,
                 })
             })
