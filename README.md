@@ -9,7 +9,7 @@
 
 [![Banner](banner.png)](https://traverseresearch.nl)
 
-This is a minimal dependency, SPIR-V reflection library written in rust. It uses the [rspirv](https://github.com/gfx-rs/rspirv/) crate as it's basis. As of writing it supports SPIR-V up to and including version 1.5.
+This is a minimal-dependency, SPIR-V reflection library written in Rust. It uses the [rspirv](https://github.com/gfx-rs/rspirv/) crate at its basis. As of writing it supports SPIR-V up to and including version 1.6.
 
 ```toml
 [dependencies]
