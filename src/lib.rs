@@ -226,10 +226,10 @@ impl Reflection {
     pub fn get_compute_group_size(&self) -> Option<(u32, u32, u32)> {
         for inst in self.0.global_inst_iter() {
             if inst.class.opcode == spirv::Op::ExecutionMode {
-                use rspirv::dr::Operand::{ExecutionMode, LiteralInt32};
+                use rspirv::dr::Operand::{ExecutionMode, LiteralBit32};
                 if let [ExecutionMode(
                     spirv::ExecutionMode::LocalSize | spirv::ExecutionMode::LocalSizeHint,
-                ), LiteralInt32(x), LiteralInt32(y), LiteralInt32(z)] = inst.operands[1..]
+                ), LiteralBit32(x), LiteralBit32(y), LiteralBit32(z)] = inst.operands[1..]
                 {
                     return Some((x, y, z));
                 } else {
@@ -274,10 +274,10 @@ impl Reflection {
                 )?;
                 // Array size can be any width, any signedness
                 assert_eq!(num_elements_ty.class.opcode, spirv::Op::TypeInt);
-                let num_elements = match get_operand_at!(num_elements_ty, Operand::LiteralInt32, 0)?
+                let num_elements = match get_operand_at!(num_elements_ty, Operand::LiteralBit32, 0)?
                 {
-                    32 => get_operand_at!(num_elements, Operand::LiteralInt32, 0)?.try_into()?,
-                    64 => get_operand_at!(num_elements, Operand::LiteralInt64, 0)?.try_into()?,
+                    32 => get_operand_at!(num_elements, Operand::LiteralBit32, 0)?.try_into()?,
+                    64 => get_operand_at!(num_elements, Operand::LiteralBit64, 0)?.try_into()?,
                     x => return Err(ReflectError::UnexpectedIntWidth(x)),
                 };
                 assert!(num_elements >= 1);
@@ -337,7 +337,7 @@ impl Reflection {
                 const IMAGE_STORAGE: u32 = 2;
 
                 // TODO: Should this be modeled as an enum in rspirv??
-                let sampled = get_operand_at!(type_instruction, Operand::LiteralInt32, 5)?;
+                let sampled = get_operand_at!(type_instruction, Operand::LiteralBit32, 5)?;
 
                 if dim == spirv::Dim::DimBuffer {
                     if sampled == IMAGE_SAMPLED {
@@ -475,7 +475,7 @@ impl Reflection {
                     (None, None),
                     |state, a| {
                         if let Operand::Decoration(d) = a.operands[1] {
-                            if let Operand::LiteralInt32(i) = a.operands[2] {
+                            if let Operand::LiteralBit32(i) = a.operands[2] {
                                 if d == spirv::Decoration::DescriptorSet {
                                     assert!(state.0.is_none(), "Set already has a value!");
                                     return (Some(i), state.1);
@@ -545,8 +545,8 @@ impl Reflection {
                 .iter()
                 .filter(|i| i.class.opcode == spirv::Op::MemberDecorate)
                 .filter_map(|&i| match get_operand_at!(i, Operand::Decoration, 2) {
-                    Ok(decoration) if decoration == spirv::Decoration::Offset => {
-                        Some(get_operand_at!(i, Operand::LiteralInt32, 3))
+                    Ok(spirv::Decoration::Offset) => {
+                        Some(get_operand_at!(i, Operand::LiteralBit32, 3))
                     }
                     Err(err) => Some(Err(err)),
                     _ => None,
@@ -565,7 +565,7 @@ impl Reflection {
         match type_instruction.class.opcode {
             spirv::Op::TypeInt | spirv::Op::TypeFloat => {
                 debug_assert!(!type_instruction.operands.is_empty());
-                Ok(get_operand_at!(type_instruction, Operand::LiteralInt32, 0)? / 8)
+                Ok(get_operand_at!(type_instruction, Operand::LiteralBit32, 0)? / 8)
             }
             spirv::Op::TypeVector | spirv::Op::TypeMatrix => {
                 debug_assert!(type_instruction.operands.len() == 2);
@@ -576,7 +576,7 @@ impl Reflection {
                     Self::calculate_variable_size_bytes(reflect, var_type_instruction)?;
 
                 let type_constant_count =
-                    get_operand_at!(type_instruction, Operand::LiteralInt32, 1)?;
+                    get_operand_at!(type_instruction, Operand::LiteralBit32, 1)?;
                 Ok(type_size_bytes * type_constant_count)
             }
             spirv::Op::TypeArray => {
@@ -591,7 +591,7 @@ impl Reflection {
                 let constant_instruction =
                     Self::find_assignment_for(&reflect.types_global_values, var_constant_id)?;
                 let type_constant_count =
-                    get_operand_at!(constant_instruction, Operand::LiteralInt32, 0)?;
+                    get_operand_at!(constant_instruction, Operand::LiteralBit32, 0)?;
 
                 Ok(type_size_bytes * type_constant_count)
             }
@@ -642,7 +642,7 @@ impl Reflection {
             .filter_map(|i| {
                 let cls = get_operand_at!(*i, Operand::StorageClass, 0);
                 match cls {
-                    Ok(cls) if cls == spirv::StorageClass::PushConstant => Some(Ok(i)),
+                    Ok(spirv::StorageClass::PushConstant) => Some(Ok(i)),
                     Err(err) => Some(Err(err)),
                     _ => None,
                 }
